@@ -24,7 +24,7 @@ public class LoginInterceptor implements HandlerInterceptor {
             response.setStatus(401);
             return false;
         }
-        UserHolder.saveUser((User)user);
+        UserHolder.saveUser((UserDTO)user);
         return true;
     }
 

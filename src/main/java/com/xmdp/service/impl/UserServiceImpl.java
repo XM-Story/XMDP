@@ -1,10 +1,12 @@
 package com.xmdp.service.impl;
 
+import cn.hutool.core.bean.BeanUtil;
 import cn.hutool.core.util.RandomUtil;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.xmdp.constant.UserConstant;
 import com.xmdp.dto.LoginFormDTO;
 import com.xmdp.dto.Result;
+import com.xmdp.dto.UserDTO;
 import com.xmdp.entity.User;
 import com.xmdp.mapper.UserMapper;
 import com.xmdp.service.IUserService;
@@ -58,7 +60,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
             user = createNewUserWithPhone(loginForm.getPhone());
         }
         //放入session
-        session.setAttribute(UserConstant.USER_NAME,user);
+        session.setAttribute(UserConstant.USER_NAME, BeanUtil.copyProperties(user, UserDTO.class));
         //这里不需要返回用户信息给前端，因为session信息默认会被cookie带上
         return Result.ok();
     }
