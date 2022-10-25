@@ -18,19 +18,11 @@ import javax.servlet.http.HttpServletResponse;
 public class LoginInterceptor implements HandlerInterceptor {
     @Override
     public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) throws Exception {
-        Object user = request.getSession().getAttribute(UserConstant.USER_NAME);
-        if (user == null){
+        if (UserHolder.getUser()==null){
             //直接返回401，401表示没有权限访问的意思  false表示拦截，true表示放行
             response.setStatus(401);
             return false;
         }
-        UserHolder.saveUser((UserDTO)user);
         return true;
-    }
-
-    @Override
-    public void afterCompletion(HttpServletRequest request, HttpServletResponse response, Object handler, Exception ex) throws Exception {
-        //登录请求处理完毕后立即清理数据，防止内存泄露
-        UserHolder.removeUser();
     }
 }
