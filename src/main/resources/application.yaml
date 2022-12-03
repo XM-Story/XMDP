@@ -5,11 +5,11 @@ spring:
     name: xmdp
   datasource:
     driver-class-name: com.mysql.jdbc.Driver
-    url: jdbc:mysql://127.0.0.1:3307/xmdp?useSSL=false&serverTimezone=UTC
+    url: jdbc:mysql://192.168.1.103:3306/xmdp?useSSL=false&serverTimezone=UTC
     username: root
     password: 123456
   redis:
-    host: 127.0.0.2
+    host: 192.168.1.103
     port: 6379
     lettuce:
       pool:

@@ -30,7 +30,8 @@ public class RefreshLoginInterceptor implements HandlerInterceptor {
     }
     @Override
     public void afterCompletion(HttpServletRequest request, HttpServletResponse response, Object handler, Exception ex) throws Exception {
-        //防止用户内存泄露
+        //请求结束后 防止用户内存泄露
+        //一次controller调用返回数据结束时会删除ThreadLocal的数据防止内存泄露，在此期间你都可以获取到用户信息，比session更好
         UserHolder.removeUser();
     }
 
