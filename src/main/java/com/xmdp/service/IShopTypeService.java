@@ -1,5 +1,6 @@
 package com.xmdp.service;
 
+import com.xmdp.dto.Result;
 import com.xmdp.entity.ShopType;
 import com.baomidou.mybatisplus.extension.service.IService;
 
@@ -12,5 +13,7 @@ import com.baomidou.mybatisplus.extension.service.IService;
  * @since 2021-12-22
  */
 public interface IShopTypeService extends IService<ShopType> {
+
+    Result queryTypeList();
 
 }
