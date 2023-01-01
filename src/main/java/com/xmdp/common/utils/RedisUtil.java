@@ -22,8 +22,10 @@ import java.util.function.Function;
  **/
 @Component
 public class RedisUtil {
-    @Autowired
     StringRedisTemplate stringRedisTemplate;
+    public RedisUtil(StringRedisTemplate stringRedisTemplate) {
+        this.stringRedisTemplate = stringRedisTemplate;
+    }
 
     public String get(String key){
         return stringRedisTemplate.opsForValue().get(key);
