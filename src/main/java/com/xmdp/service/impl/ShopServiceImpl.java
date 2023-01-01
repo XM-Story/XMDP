@@ -1,17 +1,15 @@
 package com.xmdp.service.impl;
 
-import cn.hutool.core.bean.BeanUtil;
-import cn.hutool.core.lang.Assert;
-import cn.hutool.core.util.BooleanUtil;
 import cn.hutool.core.util.StrUtil;
 import cn.hutool.json.JSONObject;
 import cn.hutool.json.JSONUtil;
+import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.xmdp.common.utils.RedisUtil;
 import com.xmdp.constant.ShopConstant;
 import com.xmdp.dto.Result;
 import com.xmdp.entity.Shop;
 import com.xmdp.mapper.ShopMapper;
 import com.xmdp.service.IShopService;
-import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.xmdp.utils.RedisData;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
@@ -36,6 +34,9 @@ public class ShopServiceImpl extends ServiceImpl<ShopMapper, Shop> implements IS
     private static final ExecutorService CACHE_REBUILD_EXECUTOR = Executors.newFixedThreadPool(10);
     @Resource
     StringRedisTemplate stringRedisTemplate;
+
+    @Resource
+    RedisUtil redisUtil;
     @Override
     public Result  queryById(Long id) {
         //缓存穿透代码处理(缓存null)
@@ -62,14 +63,14 @@ public class ShopServiceImpl extends ServiceImpl<ShopMapper, Shop> implements IS
             return Result.ok(shop);
         }
         //过期则需要重建缓存 获取互斥锁后重建
-        if (tryLock(ShopConstant.SHOP_KEY+id)){
+        if (redisUtil.tryLock(ShopConstant.SHOP_KEY+id)){
             CACHE_REBUILD_EXECUTOR.submit(()->{
                 try {
                     this.saveShop2Redis(id,20L);
                 }catch (Exception e){
                     throw new RuntimeException(e);
                 }finally {
-                    unlock(ShopConstant.SHOP_KEY+id);
+                    redisUtil.unlock(ShopConstant.SHOP_KEY+id);
                 }
             });
         }
@@ -92,7 +93,7 @@ public class ShopServiceImpl extends ServiceImpl<ShopMapper, Shop> implements IS
         Shop shop = null ;
         try{
             //查mysql,存在写入redis，获取互斥锁，获取成功 根据id查询数据库后写入，释放锁失败休眠重试
-            if (!tryLock(ShopConstant.LOCK_KEY+id)){
+            if (!redisUtil.tryLock(ShopConstant.LOCK_KEY+id)){
                 //每获取到锁，没资格重建缓存，休眠50毫秒后递归
                 TimeUnit.MILLISECONDS.sleep(10);
                 return queryWithMutex(id);
@@ -111,7 +112,7 @@ public class ShopServiceImpl extends ServiceImpl<ShopMapper, Shop> implements IS
             throw new RuntimeException(e);
         }finally {
             //保证异常了也可以释放锁
-            unlock(ShopConstant.LOCK_KEY+id);
+            redisUtil.unlock(ShopConstant.LOCK_KEY+id);
         }
         return Result.ok(shop);
     }
@@ -127,15 +128,8 @@ public class ShopServiceImpl extends ServiceImpl<ShopMapper, Shop> implements IS
         stringRedisTemplate.opsForValue().set(ShopConstant.SHOP_KEY+id,JSONUtil.toJsonStr(redisData));
     }
 
-    private boolean tryLock(String key){
-        //互斥锁，setnx 命令如果存在这个值返回false 不存在返回true 为了反正del key失败，设置有效期
-        Boolean flag = stringRedisTemplate.opsForValue().setIfAbsent(key, "1", 10, TimeUnit.SECONDS);
-        //返回的是包装类型，会自动拆箱，为了防止null导致空指针，处理
-        return BooleanUtil.isTrue(flag);
-    }
-    private void unlock(String key){
-        stringRedisTemplate.delete(key);
-    }
+
+
     public Result queryWithPassThrough(Long id){
         //查询缓存 查到返回
         String store = stringRedisTemplate.opsForValue().get(ShopConstant.SHOP_KEY+id);

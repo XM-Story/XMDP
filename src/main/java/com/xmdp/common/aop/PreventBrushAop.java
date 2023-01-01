@@ -18,6 +18,7 @@ import org.springframework.util.StringUtils;
 
 import java.lang.reflect.Method;
 import java.util.Base64;
+import java.util.concurrent.TimeUnit;
 
 /**
  * @ClassName PreventBrushAop
@@ -85,7 +86,7 @@ public class PreventBrushAop {
 
         String resp = redisUtil.get(methodFullName + base64Str);
         if (StringUtils.isEmpty(resp)) {
-            redisUtil.set(methodFullName + base64Str, requestStr, expire);
+            redisUtil.set(methodFullName + base64Str, requestStr, expire, TimeUnit.SECONDS);
         } else {
             String message = !StringUtils.isEmpty(prevent.message()) ? prevent.message() :
                     expire + "秒内不允许重复请求";
