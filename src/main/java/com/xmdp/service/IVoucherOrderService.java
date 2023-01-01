@@ -1,5 +1,6 @@
 package com.xmdp.service;
 
+import com.xmdp.dto.Result;
 import com.xmdp.entity.VoucherOrder;
 import com.baomidou.mybatisplus.extension.service.IService;
 
@@ -13,4 +14,5 @@ import com.baomidou.mybatisplus.extension.service.IService;
  */
 public interface IVoucherOrderService extends IService<VoucherOrder> {
 
+    Result seckillVoucher(Long voucherId);
 }
