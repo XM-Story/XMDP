@@ -10,7 +10,9 @@ import com.xmdp.service.ISeckillVoucherService;
 import com.xmdp.service.IVoucherOrderService;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.xmdp.utils.UserHolder;
+import org.springframework.aop.framework.AopContext;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import javax.annotation.Resource;
 import java.time.LocalDateTime;
@@ -44,6 +46,23 @@ public class VoucherOrderServiceImpl extends ServiceImpl<VoucherOrderMapper, Vou
         }
         if (seckillVoucher.getStock()<1){
             return Result.fail("优惠券库存不足！");
+        }
+        Long id = UserHolder.getUser().getId();
+        //一人一单 保证锁的粒度最细toString锁不住，底层代码每次都是new的，所以使用intern在常量池中取
+        synchronized (id.toString().intern()){
+            //获取到锁了事务开始处理，最后不管是否成功再释放锁，保证锁于事务的同步提交，这里代码需要注意Transactional的位置。
+            //保证事务的生效使用aop代理对象调用接口方法。
+            IVoucherOrderService voucherOrderService = (IVoucherOrderService)AopContext.currentProxy();
+            return voucherOrderService.createVoucherOrder(voucherId);
+        }
+    }
+    @Transactional
+    public Result createVoucherOrder(Long voucherId){
+        Long id = UserHolder.getUser().getId();
+        Integer count = query().eq("user_id", id).eq("voucher_id", voucherId).count();
+        //查询用户是否已经购买过
+        if (count>0){
+            return Result.fail("优惠券只可以购买一次！");
         }
         //为了防止商品超卖 少卖等问题使用悲观锁或者乐观锁处理
         //悲观锁就是比较悲观，直接用syn和lock锁处理，但是高并发性能很差
