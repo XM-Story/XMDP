@@ -9,8 +9,10 @@ import com.xmdp.mapper.VoucherOrderMapper;
 import com.xmdp.service.ISeckillVoucherService;
 import com.xmdp.service.IVoucherOrderService;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.xmdp.utils.SimpleRedisLock;
 import com.xmdp.utils.UserHolder;
 import org.springframework.aop.framework.AopContext;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -33,6 +35,9 @@ public class VoucherOrderServiceImpl extends ServiceImpl<VoucherOrderMapper, Vou
 
     @Resource
     RedisIdWorker redisIdWorker;
+
+    @Resource
+    StringRedisTemplate stringRedisTemplate;
     @Override
     public Result seckillVoucher(Long voucherId) {
         SeckillVoucher seckillVoucher = seckillVoucherService.getById(voucherId);
@@ -49,12 +54,15 @@ public class VoucherOrderServiceImpl extends ServiceImpl<VoucherOrderMapper, Vou
         }
         Long id = UserHolder.getUser().getId();
         //一人一单 保证锁的粒度最细toString锁不住，底层代码每次都是new的，所以使用intern在常量池中取
-        synchronized (id.toString().intern()){
-            //获取到锁了事务开始处理，最后不管是否成功再释放锁，保证锁于事务的同步提交，这里代码需要注意Transactional的位置。
-            //保证事务的生效使用aop代理对象调用接口方法。
-            IVoucherOrderService voucherOrderService = (IVoucherOrderService)AopContext.currentProxy();
-            return voucherOrderService.createVoucherOrder(voucherId);
+        SimpleRedisLock simpleRedisLock = new SimpleRedisLock("order"+id,stringRedisTemplate);
+        boolean b = simpleRedisLock.tryLock(5);
+        if (!b){
+            return Result.fail("获取优惠券失败请稍后再试！");
         }
+        //获取到锁了事务开始处理，最后不管是否成功再释放锁，保证锁于事务的同步提交，这里代码需要注意Transactional的位置。
+        //保证事务的生效使用aop代理对象调用接口方法。
+        IVoucherOrderService voucherOrderService = (IVoucherOrderService)AopContext.currentProxy();
+        return voucherOrderService.createVoucherOrder(voucherId);
     }
     @Transactional
     public Result createVoucherOrder(Long voucherId){
